@@ -34,7 +34,12 @@ func handleExternalRequest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}(resp.Body)
 
 	// Check if it is a redirection
 	if resp.StatusCode >= 300 && resp.StatusCode <= 308 {
@@ -51,9 +56,18 @@ func handleExternalRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-	w.Write(body)
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func handleRequest(w http.ResponseWriter, r *http.Request) {
@@ -65,20 +79,38 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}(resp.Body)
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	for _, secDomain := range SecondaryDomains {
-		body = []byte(strings.ReplaceAll(string(body), secDomain, "/_EXTERNAL_?url=https://pub-e8e8b7fd0569420da3c4f7690cb95bbd.r2.dev"))
+		body = []byte(strings.ReplaceAll(string(body), secDomain, "/_EXTERNAL_?url="+secDomain))
 	}
 
 	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-	w.Write(body)
+	_, err = w.Write(body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
-func handleCheckAlive(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("OK"))
+func handleCheckAlive(w http.ResponseWriter, _ *http.Request) {
+	_, err := w.Write([]byte("OK"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func main() {
