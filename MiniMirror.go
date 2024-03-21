@@ -106,7 +106,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleCheckAlive(w http.ResponseWriter, _ *http.Request) {
-	_, err := w.Write([]byte("OK"))
+	_, err := w.Write([]byte("Ok"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -116,7 +116,7 @@ func handleCheckAlive(w http.ResponseWriter, _ *http.Request) {
 func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/_EXTERNAL_", handleExternalRequest).Methods(http.MethodGet)
-	r.HandleFunc("/check_alive", handleCheckAlive).Methods(http.MethodGet)
+	r.HandleFunc("/check", handleCheckAlive).Methods(http.MethodGet)
 	r.HandleFunc("/{path:.*}", handleRequest)
 	fmt.Printf("Starting mirror of %s on port http://localhost:8080", TargetDomain)
 	log.Fatal(http.ListenAndServe(":8080", r))

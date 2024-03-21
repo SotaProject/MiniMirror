@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  mini-mirror:
+    build: ./
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      TARGET_DOMAIN: 'https://example.com'
+      SECONDARY_DOMAINS: 'https://s3.example.com'
+    logging:
+      options:
+        max-size: 50m
