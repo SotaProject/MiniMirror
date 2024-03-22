@@ -93,10 +93,13 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, secDomain := range SecondaryDomains {
-		body = []byte(strings.ReplaceAll(string(body), secDomain, "/_EXTERNAL_?url="+secDomain))
-	}
+	// Replace secondary domains with proxy link
+	if len(SecondaryDomains) > 0 && !(SecondaryDomains[0] == "") {
+		for _, secDomain := range SecondaryDomains {
+			body = []byte(strings.ReplaceAll(string(body), secDomain, "/_EXTERNAL_?url="+secDomain))
+		}
 
+	}
 	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 	_, err = w.Write(body)
 	if err != nil {
