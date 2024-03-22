@@ -10,7 +10,7 @@ Now only get requests are supported, we plan to add other types, but can't guara
 
 `go build`
 
-`./MiniMirror`
+`TARGET_DOMAIN=https://example.com SECONDARY_DOMAINS=https://s3.example.com ./MiniMirror`
 
 
 ## Production 
