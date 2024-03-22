@@ -73,7 +73,8 @@ func handleExternalRequest(w http.ResponseWriter, r *http.Request) {
 func handleRequest(w http.ResponseWriter, r *http.Request) {
 	// Form new URL
 	newURL := TargetDomain + r.URL.Path
-	// Clone request header
+
+	// TODO: Send request with same method as original one
 	resp, err := http.Get(newURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -93,7 +94,10 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Replace secondary domains with proxy link
+	// Replace domain with relative link
+	body = []byte(strings.ReplaceAll(string(body), TargetDomain+"/", "/"))
+
+	// Replace secondary domains if there are any with proxy link
 	if len(SecondaryDomains) > 0 && !(SecondaryDomains[0] == "") {
 		for _, secDomain := range SecondaryDomains {
 			body = []byte(strings.ReplaceAll(string(body), secDomain, "/_EXTERNAL_?url="+secDomain))
