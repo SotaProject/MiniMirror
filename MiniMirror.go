@@ -1,97 +1,59 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/gofiber/fiber/v2"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
-
-	"github.com/gorilla/mux"
 )
 
 var (
-	TargetDomain = os.Getenv("TARGET_DOMAIN")
-)
-
-var (
+	TargetDomain     = os.Getenv("TARGET_DOMAIN")
 	SecondaryDomains = strings.Split(os.Getenv("SECONDARY_DOMAINS"), ";")
+	port             = os.Getenv("PORT")
 )
 
-func handleExternalRequest(w http.ResponseWriter, r *http.Request) {
-	queryParams := r.URL.Query()
-	externalURL := queryParams.Get("url")
+func mirrorUrl(url string, c *fiber.Ctx) error {
+	reqBodyBuffer := bytes.NewBuffer(c.Body())
 
-	if externalURL == "" {
-		http.Error(w, "Missing url parameter", http.StatusBadRequest)
-		return
-	}
-
-	// Clone request header
-	resp, err := http.Get(externalURL)
+	req, err := http.NewRequest(c.Method(), url, reqBodyBuffer)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return c.Status(fiber.StatusInternalServerError).SendStatus(fiber.StatusInternalServerError)
 	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+	client := &http.Client{}
+
+	// Copy headers from Fiber context to the new http.Request
+	for k, v := range c.GetReqHeaders() {
+		for _, vv := range v {
+			if k != "Accept-Encoding" {
+				req.Header.Add(k, vv)
+			}
 		}
-	}(resp.Body)
+	}
 
-	// Check if it is a redirection
-	if resp.StatusCode >= 300 && resp.StatusCode <= 308 {
-		loc, err := resp.Location()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+	// Fetch Request
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err.Error())
+		return c.Status(fiber.StatusInternalServerError).SendStatus(fiber.StatusInternalServerError)
+	}
+	defer resp.Body.Close()
+
+	for name, values := range resp.Header {
+		for _, value := range values {
+			c.Append(name, value)
 		}
-		// replace scheme and host
-		loc.Scheme = r.URL.Scheme
-		loc.Host = r.URL.Host
-
-		http.Redirect(w, r, loc.String(), resp.StatusCode)
-		return
 	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-	_, err = w.Write(body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func handleRequest(w http.ResponseWriter, r *http.Request) {
-	// Form new URL
-	newURL := TargetDomain + r.URL.Path
-
-	// TODO: Send request with same method as original one
-	resp, err := http.Get(newURL)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	}(resp.Body)
 
 	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return c.Status(fiber.StatusInternalServerError).SendStatus(fiber.StatusInternalServerError)
 	}
 
 	// Replace domain with relative link
@@ -102,29 +64,52 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		for _, secDomain := range SecondaryDomains {
 			body = []byte(strings.ReplaceAll(string(body), secDomain, "/_EXTERNAL_?url="+secDomain))
 		}
+	}
 
-	}
-	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-	_, err = w.Write(body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	return c.Status(resp.StatusCode).Send(body)
 }
 
-func handleCheckAlive(w http.ResponseWriter, _ *http.Request) {
-	_, err := w.Write([]byte("Ok"))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+func handleInternalRequest(c *fiber.Ctx) error {
+
+	// Form new URL
+	newURL := TargetDomain + c.Path()
+
+	return mirrorUrl(newURL, c)
+}
+
+func handleExternalRequest(c *fiber.Ctx) error {
+	return mirrorUrl(c.Query("url"), c)
 }
 
 func main() {
-	r := mux.NewRouter()
-	r.HandleFunc("/_EXTERNAL_", handleExternalRequest).Methods(http.MethodGet)
-	r.HandleFunc("/check", handleCheckAlive).Methods(http.MethodGet)
-	r.HandleFunc("/{path:.*}", handleRequest)
-	fmt.Printf("Starting mirror of %s on port http://localhost:8080", TargetDomain)
-	log.Fatal(http.ListenAndServe(":8080", r))
+	if port == "" {
+		port = "3000"
+	}
+
+	app := fiber.New()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		_ = <-c
+		fmt.Println("Gracefully shutting down...")
+		_ = app.Shutdown()
+	}()
+
+	app.All("/_EXTERNAL_", func(c *fiber.Ctx) error {
+		return handleExternalRequest(c)
+	})
+
+	app.Get("/check", func(c *fiber.Ctx) error {
+		return c.SendString("Ok")
+	})
+
+	app.All("/*", func(c *fiber.Ctx) error {
+		return handleInternalRequest(c)
+	})
+
+	if err := app.Listen(":" + port); err != nil {
+		log.Panic(err)
+	}
+	fmt.Println("Goodbye!")
 }

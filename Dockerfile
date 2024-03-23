@@ -14,7 +14,7 @@ RUN go get -d -v ./...
 RUN go build -o MiniMirror .
 
 #EXPOSE the port
-EXPOSE 8080
+EXPOSE 3000
 
 # Run the executable
 CMD ["./MiniMirror"]
