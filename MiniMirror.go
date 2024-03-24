@@ -36,6 +36,16 @@ func mirrorUrl(url string, c *fiber.Ctx) error {
 		}
 	}
 
+	// Copy query params
+	q := req.URL.Query()
+	for key, val := range c.Queries() {
+		if key == "EXTERNAL_URL" {
+			continue
+		}
+		q.Add(key, val)
+	}
+	req.URL.RawQuery = q.Encode()
+
 	// Fetch Request
 	resp, err := client.Do(req)
 	if err != nil {
@@ -62,7 +72,7 @@ func mirrorUrl(url string, c *fiber.Ctx) error {
 	// Replace secondary domains if there are any with proxy link
 	if len(SecondaryDomains) > 0 && !(SecondaryDomains[0] == "") {
 		for _, secDomain := range SecondaryDomains {
-			body = []byte(strings.ReplaceAll(string(body), secDomain, "/_EXTERNAL_?url="+secDomain))
+			body = []byte(strings.ReplaceAll(string(body), secDomain, "/_EXTERNAL_?EXTERNAL_URL="+secDomain))
 		}
 	}
 
@@ -78,7 +88,7 @@ func handleInternalRequest(c *fiber.Ctx) error {
 }
 
 func handleExternalRequest(c *fiber.Ctx) error {
-	return mirrorUrl(c.Query("url"), c)
+	return mirrorUrl(c.Query("EXTERNAL_URL"), c)
 }
 
 func main() {
