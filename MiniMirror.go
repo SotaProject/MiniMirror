@@ -56,7 +56,7 @@ func mirrorUrl(url string, c *fiber.Ctx) error {
 
 	for name, values := range resp.Header {
 		for _, value := range values {
-			c.Append(name, value)
+			c.Set(name, value)
 		}
 	}
 
