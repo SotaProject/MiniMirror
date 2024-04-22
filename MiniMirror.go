@@ -14,11 +14,15 @@ import (
 
 var (
 	TargetDomain     = os.Getenv("TARGET_DOMAIN")
+	TargetEndpoint   = os.Getenv("TARGET_ENDPOINT")
 	SecondaryDomains = strings.Split(os.Getenv("SECONDARY_DOMAINS"), ";")
 	port             = os.Getenv("PORT")
 )
 
-func mirrorUrl(url string, c *fiber.Ctx) error {
+const MaxRetry = 3
+
+func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
+	log.Printf("mirroring %s", url)
 	reqBodyBuffer := bytes.NewBuffer(c.Body())
 
 	req, err := http.NewRequest(c.Method(), url, reqBodyBuffer)
@@ -49,7 +53,12 @@ func mirrorUrl(url string, c *fiber.Ctx) error {
 	// Fetch Request
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err.Error())
+		if retry < MaxRetry {
+			log.Printf(err.Error())
+			log.Printf("retrying to mirror %s", url)
+			return mirrorUrl(url, c, retry+1)
+		}
+		log.Printf("Failed after %d retries, returning error", retry)
 		return c.Status(fiber.StatusInternalServerError).SendStatus(fiber.StatusInternalServerError)
 	}
 	defer resp.Body.Close()
@@ -80,15 +89,19 @@ func mirrorUrl(url string, c *fiber.Ctx) error {
 }
 
 func handleInternalRequest(c *fiber.Ctx) error {
-
 	// Form new URL
-	newURL := TargetDomain + c.Path()
+	newURL := c.Path()
+	if TargetEndpoint != "" {
+		newURL = TargetEndpoint + newURL
+	} else {
+		newURL = TargetDomain + newURL
+	}
 
-	return mirrorUrl(newURL, c)
+	return mirrorUrl(newURL, c, 0)
 }
 
 func handleExternalRequest(c *fiber.Ctx) error {
-	return mirrorUrl(c.Query("EXTERNAL_URL"), c)
+	return mirrorUrl(c.Query("EXTERNAL_URL"), c, 0)
 }
 
 func main() {
