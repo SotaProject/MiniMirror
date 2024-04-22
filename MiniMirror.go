@@ -61,7 +61,17 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 		log.Printf("Failed after %d retries, returning error", retry)
 		return c.Status(fiber.StatusInternalServerError).SendStatus(fiber.StatusInternalServerError)
 	}
-	defer resp.Body.Close()
+	// Retry if server error
+	if resp.StatusCode >= 500 && resp.StatusCode < 600 && retry < MaxRetry {
+		log.Printf("Status code %d, retrying to mirror %s", resp.StatusCode, url)
+		return mirrorUrl(url, c, retry+1)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Printf(err.Error())
+		}
+	}(resp.Body)
 
 	for name, values := range resp.Header {
 		for _, value := range values {
