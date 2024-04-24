@@ -19,6 +19,8 @@ var (
 	port             = os.Getenv("PORT")
 )
 
+var errorLog = log.New(os.Stderr, "", 0)
+
 const MaxRetry = 3
 
 func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
@@ -58,7 +60,8 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 			log.Printf("retrying to mirror %s", url)
 			return mirrorUrl(url, c, retry+1)
 		}
-		log.Printf("Failed after %d retries, returning error", retry)
+		errorLog.Printf("Failed after %d retries, returning error", retry)
+		errorLog.Println(err.Error())
 		return c.Status(fiber.StatusInternalServerError).SendStatus(fiber.StatusInternalServerError)
 	}
 	// Retry if server error
