@@ -29,6 +29,7 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 
 	req, err := http.NewRequest(c.Method(), url, reqBodyBuffer)
 	if err != nil {
+		errorLog.Println("Error creating new request:", err.Error())
 		return c.Status(fiber.StatusInternalServerError).SendStatus(fiber.StatusInternalServerError)
 	}
 	client := &http.Client{}
