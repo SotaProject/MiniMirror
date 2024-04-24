@@ -114,12 +114,50 @@ func handleExternalRequest(c *fiber.Ctx) error {
 	return mirrorUrl(c.Query("EXTERNAL_URL"), c, 0)
 }
 
+func LogFullRequest() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Process the request
+		err := c.Next()
+
+		// Log after processing the request
+		printRequest(c)
+
+		// Return original error (if any)
+		return err
+	}
+}
+func printRequest(c *fiber.Ctx) {
+	logEntry := ""
+
+	logEntry += fmt.Sprintf("%s %s %s\n",
+		c.IP(),          // Client's IP address
+		c.Method(),      // HTTP method
+		c.OriginalURL(), // Original URL
+	)
+
+	logEntry += "Headers:\n"
+	for name, values := range c.GetReqHeaders() {
+		for _, value := range values {
+			logEntry += fmt.Sprintf("\t%s: %s\n", name, value)
+		}
+	}
+
+	// Check if request body needs to be logged
+	if c.Method() == fiber.MethodPost || c.Method() == fiber.MethodPut || c.Method() == fiber.MethodPatch {
+		fmt.Println("Body:")
+		logEntry += "Body:\n"
+		logEntry += string(c.Body())
+	}
+	log.Print(logEntry)
+}
+
 func main() {
 	if port == "" {
 		port = "3000"
 	}
 
 	app := fiber.New()
+	app.Use(LogFullRequest())
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
