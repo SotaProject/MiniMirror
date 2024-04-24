@@ -145,12 +145,12 @@ func printRequest(c *fiber.Ctx) {
 		c.OriginalURL(), // Original URL
 	)
 
-	logEntry += "Headers:\n"
-	for name, values := range c.GetReqHeaders() {
-		for _, value := range values {
-			logEntry += fmt.Sprintf("\t%s: %s\n", name, value)
-		}
-	}
+	//logEntry += "Headers:\n"
+	//for name, values := range c.GetReqHeaders() {
+	//	for _, value := range values {
+	//		logEntry += fmt.Sprintf("\t%s: %s\n", name, value)
+	//	}
+	//}
 
 	// Check if request body needs to be logged
 	if c.Method() == fiber.MethodPost || c.Method() == fiber.MethodPut || c.Method() == fiber.MethodPatch {
