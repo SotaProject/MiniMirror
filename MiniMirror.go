@@ -91,6 +91,7 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
+		errorLog.Println("Error reading response body:", err.Error())
 		return c.Status(fiber.StatusInternalServerError).SendStatus(fiber.StatusInternalServerError)
 	}
 
