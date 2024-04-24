@@ -158,7 +158,7 @@ func printRequest(c *fiber.Ctx) {
 		logEntry += "Body:\n"
 		logEntry += string(c.Body())
 	}
-	log.Print(logEntry)
+	errorLog.Print(logEntry)
 }
 
 func main() {
