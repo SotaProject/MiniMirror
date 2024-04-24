@@ -66,6 +66,9 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 		log.Printf("Status code %d, retrying to mirror %s", resp.StatusCode, url)
 		return mirrorUrl(url, c, retry+1)
 	}
+	if retry >= MaxRetry {
+		log.Printf("Max retry number reached, returning %d", resp.StatusCode)
+	}
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
@@ -73,9 +76,11 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 		}
 	}(resp.Body)
 
-	for name, values := range resp.Header {
-		for _, value := range values {
-			c.Set(name, value)
+	if resp.StatusCode == http.StatusOK {
+		for name, values := range resp.Header {
+			for _, value := range values {
+				c.Set(name, value)
+			}
 		}
 	}
 
