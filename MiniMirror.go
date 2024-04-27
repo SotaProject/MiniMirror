@@ -28,6 +28,7 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 	reqBodyBuffer := bytes.NewBuffer(c.Body())
 
 	req, err := http.NewRequest(c.Method(), url, reqBodyBuffer)
+
 	if err != nil {
 		errorLog.Println("Error creating new request:", err.Error())
 		return c.Status(fiber.StatusInternalServerError).SendStatus(fiber.StatusInternalServerError)
@@ -37,9 +38,13 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 	// Copy headers from Fiber context to the new http.Request
 	for k, v := range c.GetReqHeaders() {
 		for _, vv := range v {
-			if k != "Accept-Encoding" {
-				req.Header.Add(k, vv)
+			switch k {
+			case
+				"If-None-Match",
+				"If-Modified-Since":
+				continue
 			}
+			req.Header.Add(k, vv)
 		}
 	}
 
@@ -55,6 +60,7 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 
 	// Fetch Request
 	resp, err := client.Do(req)
+
 	if err != nil {
 		if retry < MaxRetry {
 			log.Printf(err.Error())
@@ -65,6 +71,7 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 		errorLog.Println(err.Error())
 		return c.Status(fiber.StatusInternalServerError).SendStatus(fiber.StatusInternalServerError)
 	}
+
 	// Retry if server error
 	if resp.StatusCode >= 500 && resp.StatusCode < 600 && retry < MaxRetry {
 		log.Printf("Status code %d, retrying to mirror %s", resp.StatusCode, url)
@@ -124,50 +131,12 @@ func handleExternalRequest(c *fiber.Ctx) error {
 	return mirrorUrl(c.Query("EXTERNAL_URL"), c, 0)
 }
 
-func LogFullRequest() fiber.Handler {
-	return func(c *fiber.Ctx) error {
-		// Process the request
-		err := c.Next()
-
-		// Log after processing the request
-		printRequest(c)
-
-		// Return original error (if any)
-		return err
-	}
-}
-func printRequest(c *fiber.Ctx) {
-	logEntry := ""
-
-	logEntry += fmt.Sprintf("%s %s %s\n",
-		c.IP(),          // Client's IP address
-		c.Method(),      // HTTP method
-		c.OriginalURL(), // Original URL
-	)
-
-	//logEntry += "Headers:\n"
-	//for name, values := range c.GetReqHeaders() {
-	//	for _, value := range values {
-	//		logEntry += fmt.Sprintf("\t%s: %s\n", name, value)
-	//	}
-	//}
-
-	// Check if request body needs to be logged
-	if c.Method() == fiber.MethodPost || c.Method() == fiber.MethodPut || c.Method() == fiber.MethodPatch {
-		fmt.Println("Body:")
-		logEntry += "Body:\n"
-		logEntry += string(c.Body())
-	}
-	errorLog.Print(logEntry)
-}
-
 func main() {
 	if port == "" {
 		port = "3000"
 	}
 
 	app := fiber.New()
-	app.Use(LogFullRequest())
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
