@@ -62,6 +62,7 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 			req.Header.Add(k, vv)
 		}
 	}
+	req.Header.Add("MINIMIRROR", "TRUE")
 
 	// Copy query params
 	q := req.URL.Query()
@@ -73,6 +74,7 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 	}
 	req.URL.RawQuery = q.Encode()
 
+	fmt.Println(url + "\n" + headersString)
 	// Fetch Request
 	resp, err := client.Do(req)
 
@@ -119,10 +121,12 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 
 	// Replace domain with relative link
 	body = []byte(strings.ReplaceAll(string(body), TargetDomain+"/", "/"))
-
 	// Replace secondary domains if there are any with proxy link
 	if len(SecondaryDomains) > 0 && !(SecondaryDomains[0] == "") {
 		for _, secDomain := range SecondaryDomains {
+			if strings.Contains(string(body), secDomain) {
+				fmt.Println(url)
+			}
 			body = []byte(strings.ReplaceAll(string(body), secDomain, "/_EXTERNAL_?EXTERNAL_URL="+secDomain))
 		}
 	}
