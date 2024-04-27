@@ -39,14 +39,23 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 	// Copy headers from Fiber context to the new http.Request
 	for k, v := range c.GetReqHeaders() {
 		for _, vv := range v {
+			headersString += fmt.Sprintf("\t%s: %s\r\n", k, vv)
 			switch k {
 			case
 				"If-None-Match",
-				"If-Modified-Since":
+				"If-Modified-Since",
+				"Accept-Encoding":
 				continue
 			}
-			req.Header.Add(k, vv)
-			headersString += fmt.Sprintf("\t%s: %s\r\n", k, vv)
+			switch k {
+			case
+				"Host",
+				"Accept",
+				"User-Agent",
+				"Accept-Language":
+				req.Header.Add(k, vv)
+			}
+			//req.Header.Add(k, vv)
 		}
 	}
 
