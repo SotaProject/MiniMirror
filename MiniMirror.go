@@ -35,6 +35,7 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 	}
 	client := &http.Client{}
 
+	var headersString string
 	// Copy headers from Fiber context to the new http.Request
 	for k, v := range c.GetReqHeaders() {
 		for _, vv := range v {
@@ -45,6 +46,7 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 				continue
 			}
 			req.Header.Add(k, vv)
+			headersString += fmt.Sprintf("\t%s: %s\r\n", k, vv)
 		}
 	}
 
@@ -58,6 +60,7 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 	}
 	req.URL.RawQuery = q.Encode()
 
+	log.Println(url + "\n" + headersString)
 	// Fetch Request
 	resp, err := client.Do(req)
 
