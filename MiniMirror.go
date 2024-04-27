@@ -44,18 +44,22 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 			case
 				"If-None-Match",
 				"If-Modified-Since",
+				"If-Range",
+				"X-Cloud-Trace-Context",
+				"X-Forwarded-Proto",
+				"Forwarded",
 				"Accept-Encoding":
 				continue
 			}
-			switch k {
-			case
-				"Host",
-				"Accept",
-				"User-Agent",
-				"Accept-Language":
-				req.Header.Add(k, vv)
-			}
-			//req.Header.Add(k, vv)
+			//switch k {
+			//case
+			//	"Host",
+			//	"Accept",
+			//	"User-Agent",
+			//	"Accept-Language":
+			//	req.Header.Add(k, vv)
+			//}
+			req.Header.Add(k, vv)
 		}
 	}
 
@@ -69,7 +73,6 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 	}
 	req.URL.RawQuery = q.Encode()
 
-	log.Println(url + "\n" + headersString)
 	// Fetch Request
 	resp, err := client.Do(req)
 
@@ -123,6 +126,8 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 			body = []byte(strings.ReplaceAll(string(body), secDomain, "/_EXTERNAL_?EXTERNAL_URL="+secDomain))
 		}
 	}
+
+	body = []byte(strings.ReplaceAll(string(body), "45babd3f-3541-4933-92d8-0580e5d9ec74", "TEST"))
 
 	return c.Status(resp.StatusCode).Send(body)
 }
