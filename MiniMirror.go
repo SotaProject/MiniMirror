@@ -127,8 +127,6 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 		}
 	}
 
-	body = []byte(strings.ReplaceAll(string(body), "45babd3f-3541-4933-92d8-0580e5d9ec74", "TEST"))
-
 	return c.Status(resp.StatusCode).Send(body)
 }
 
