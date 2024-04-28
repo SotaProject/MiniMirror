@@ -47,7 +47,15 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 				"If-Range",
 				"X-Cloud-Trace-Context",
 				"X-Forwarded-Proto",
+				"X-Forwarded-For",
 				"Forwarded",
+				"Sec-Ch-Ua-Platform:",
+				"Sec-Ch-Ua",
+				"Sec-Ch-Ua-Mobile",
+				"Sec-Fetch-Site",
+				"Sec-Fetch-Mode",
+				"Sec-Fetch-Dest",
+				"Priority",
 				"Accept-Encoding":
 				continue
 			}
