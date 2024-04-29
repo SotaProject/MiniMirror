@@ -59,15 +59,15 @@ func mirrorUrl(url string, c *fiber.Ctx, retry int8) error {
 				"Accept-Encoding":
 				continue
 			}
-			//switch k {
-			//case
-			//	"Host",
-			//	"Accept",
-			//	"User-Agent",
-			//	"Accept-Language":
-			//	req.Header.Add(k, vv)
-			//}
-			req.Header.Add(k, vv)
+			switch k {
+			case
+				"Host",
+				"Accept",
+				"User-Agent",
+				"Accept-Language":
+				req.Header.Add(k, vv)
+			}
+			//req.Header.Add(k, vv)
 		}
 	}
 	req.Header.Add("MINIMIRROR", "TRUE")
